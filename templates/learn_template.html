@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}Lista Linków{% endblock %}
+
+{% block page_content %}
+    <div class="page-header">
+    <h1>Fetched links:</h1>
+    </div>
+    <h4>Indexed {{ fetchedData|length }} outgoing links for: http://{{ url }}:</h4>
+    <hr>
+    <ul class="list-group">
+        {% for i in fetchedData %}
+        <li class="list-group-item">{{ i }}</li>
+        {% endfor %}
+    </ul>
+
+{% endblock %}
