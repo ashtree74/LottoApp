@@ -9,6 +9,11 @@ def fetch_page(url):
 
 
 def get_links(url):
+    """
+    Fetch links from website
+    :param url:
+    :return:
+    """
     html_doc = fetch_page(url)
     soup = BeautifulSoup(html_doc, 'html.parser')
     linksList = []
