@@ -1,16 +1,20 @@
-import os, sys
+# -*- coding: utf-8 -*-
+
+import os, sys, datetime, locale
 from flask import Flask, render_template, session, redirect, url_for, flash, request
 from flask_script import Manager
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
-from wtforms.validators import Required
+from wtforms.fields.html5 import DateField
+from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(basedir, 'app'))
 from fetcher import *
+from classes import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hard to guess string'
@@ -48,19 +52,23 @@ class User(db.Model):
 
 
 class NameForm(FlaskForm):
-    name = StringField('What is your name?', validators=[Required()])
+    name = StringField('What is your name?', validators=[DataRequired()])
     submit = SubmitField('Submit')
+
+
+class LottoForm(FlaskForm):
+    handNumbers = StringField('Podaj swoje typy (np. 2,9,12,19,32,48; itd.):', validators=[DataRequired()])
+    date = DateField('Data losowania:', format='%Y-%m-%d')
+    submit = SubmitField(u'Sprawdź wyniki')
 
 
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
 
-
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('500.html'), 500
-
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -85,7 +93,6 @@ def learn():
         fetchedData = ''
     return render_template('learn_template.html', url = url, fetchedData = fetchedData)
 
-
 @app.route('/movies')
 def movies():
     url = request.args.get('q')
@@ -95,9 +102,39 @@ def movies():
         fetchedData = ''
     return render_template('learn_template.html', url = url, fetchedData = fetchedData)
 
+@app.route('/lotto', methods=['GET', 'POST'])
+def lotto():
+    form = LottoForm()
+    data = 'to sa dane tratarata'
+    if form.validate_on_submit():
+        session['date'] = form.date.data
+        session['handNumbers'] = form.handNumbers.data
+        return redirect(url_for('wyniki'))
+    return render_template('lotto_home.html', data=data, form=form)
+
+@app.route('/lotto-wyniki')
+def wyniki():
+    date = datetime.datetime.strptime(session.get('date'), '%a, %d %b %Y %X %Z').strftime('%Y-%m-%d')
+    handNumbers_temp = session.get('handNumbers').split(';')
+    handNumbers = []
+    for pos in handNumbers_temp:
+        handNumbers.append(map(int, pos.split(',')))
+    # sprawdzanie wyników w różnych kuponach
+    template_data = []
+    for kupon in handNumbers:
+        dic_temp = {}
+        wyniki = lotto.check_numbers(kupon, date)
+        dic_temp['wyniki'] = wyniki
+        dic_temp['results'] = lotto.get_results()[0]
+        dic_temp['handNumbers'] = kupon
+        dic_temp['results_format'] = lotto.drawResult(lotto.get_results()[0], wyniki)
+        template_data.append(dic_temp)
+
+    return render_template('wyniki.html', date=date, template_data=template_data)
 
 
 if __name__ == '__main__':
     db.create_all()
+    lotto = Lotto()
     fetchedData = get_links(url)
     manager.run()
